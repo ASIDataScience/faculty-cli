@@ -1,0 +1,271 @@
+_complete() {
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    COMPREPLY=()
+
+    if [[ ${cur} == * ]]; then
+        COMPREPLY=($(compgen -W "${1}" -- ${cur}))
+        return 0
+    fi
+}
+
+_complete_path() {
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+
+    COMPREPLY=()
+    if [[ ${cur} == * ]]; then
+        _filedir
+        return 0
+    fi
+
+}
+_complete_newlinesep() {
+
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local IFS=$'\n'
+    COMPREPLY=()
+
+    if [[ ${cur} == * ]]; then
+        COMPREPLY=($(compgen -W "${1}" -- ${cur}))
+        return 0
+    fi
+}
+
+_get_projects() {
+    faculty project list 2>/dev/null
+}
+
+_get_servers() {
+    faculty server list "$1" 2>/dev/null
+}
+
+_get_environments() {
+    faculty environment list "$1" 2>/dev/null
+}
+
+_get_jobs() {
+    faculty job list "$1" 2>/dev/null
+}
+
+_get_job_runs() {
+    faculty job list-runs "$1" "$2" 2>/dev/null
+}
+
+_add_double_quotes() {
+    case $1 in
+    *\ *)
+        echo "\"$1\""
+        ;;
+    *)
+        echo $1
+        ;;
+    esac
+}
+
+_add_double_quotes_to_compreply() {
+
+    local clength i
+    clength=${#COMPREPLY[@]}
+    for ((i = 0; i < clength; i++)); do
+        COMPREPLY[$i]=$(_add_double_quotes ${COMPREPLY[i]})
+    done
+    return 0
+}
+
+_complete_project() {
+
+    local opts=$(_get_projects)
+    local IFS=$'\n'
+    _complete_newlinesep "$opts"
+    _add_double_quotes_to_compreply
+
+    return 0
+}
+
+_remove_double_quotes() {
+
+    s=$1
+    s="${s%\"}"
+    s="${s#\"}"
+    echo $s
+}
+
+_complete_server() {
+
+    local project=$(_remove_double_quotes "$1")
+    local opts=$(_get_servers "$project")
+    _complete_newlinesep "$opts"
+    _add_double_quotes_to_compreply
+
+    return 0
+}
+
+_complete_environment() {
+
+    local project=$(_remove_double_quotes "$1")
+    local opts=$(_get_environments "$project")
+    _complete_newlinesep "$opts"
+    _add_double_quotes_to_compreply
+
+    return 0
+}
+
+_complete_job() {
+
+    local project=$(_remove_double_quotes "$1")
+    local opts=$(_get_jobs "$project")
+    local IFS=$'\n'
+    _complete_newlinesep "$opts"
+    _add_double_quotes_to_compreply
+
+    return 0
+}
+
+_complete_job_run() {
+
+    local project=$(_remove_double_quotes "$1")
+    local job=$(_remove_double_quotes "$2")
+    local opts=$(_get_job_runs "$project" "$job")
+    echo $project
+
+    return 0
+}
+
+_faculty() {
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        _complete "environment file home login project server shell version completion job"
+    fi
+
+    if [[ $COMP_CWORD -gt 1 ]]; then
+        local base="${COMP_WORDS[1]}"
+
+        case $base in
+        "shell")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then _complete_project; fi
+            if [[ $COMP_CWORD -eq 3 ]]; then
+                local project=${COMP_WORDS[2]}
+                _complete_server "$project"
+            fi
+            ;;
+
+        "server")
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "list new open terminate"
+            fi
+            if [[ $COMP_CWORD -eq 3 ]]; then
+                _complete_project
+            fi
+            if [[ $COMP_CWORD -eq 4 ]]; then
+                local selection=${COMP_WORDS[2]}
+
+                case $selection in
+                terminate)
+                    local project=${COMP_WORDS[3]}
+                    _complete_server "$project"
+                    ;;
+                open)
+                    _complete "--server"
+                    ;;
+                esac
+            fi
+            if [[ $COMP_CWORD -eq 5 ]]; then
+                local selection=${COMP_WORDS[2]}
+                if [[ $selection == open ]]; then
+                    local project=${COMP_WORDS[3]}
+                    _complete_server "$project"
+                fi
+            fi
+            ;;
+
+        "environment")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "apply list logs status"
+            fi
+            if [[ $COMP_CWORD -eq 3 ]]; then
+                _complete_project
+            fi
+            if [[ $COMP_CWORD -eq 4 ]]; then
+                local project=${COMP_WORDS[3]}
+                _complete_server "$project"
+            fi
+            if [[ $COMP_CWORD -eq 5 ]]; then
+                local selection=${COMP_WORDS[2]}
+                if [[ $selection == apply ]]; then
+                    local project=${COMP_WORDS[3]}
+                    _complete_environment "$project"
+                fi
+            fi
+            ;;
+
+        "file")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "get put sync-down sync-up"
+            fi
+            if [[ $COMP_CWORD -eq 3 ]]; then
+                _complete_project
+            fi
+            if [[ $COMP_CWORD -eq 4 ]]; then
+                local selection=${COMP_WORDS[2]}
+                case $selection in
+                "put"|"sync-up")
+                    _complete_path
+                    ;;
+                esac
+            fi
+            if [[ $COMP_CWORD -eq 5 ]]; then
+                local selection=${COMP_WORDS[2]}
+                case $selection in
+                "get"|"sync-down")
+                    _complete_path
+                    ;;
+                esac
+            fi
+            ;;
+
+        "completion")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "bash zsh fish"
+            fi
+            ;;
+
+        "project")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "list"
+            fi
+            ;;
+
+        "job")
+
+            if [[ $COMP_CWORD -eq 2 ]]; then
+                _complete "list list-runs logs run"
+            fi
+            if [[ $COMP_CWORD -eq 3 ]]; then
+                _complete_project
+            fi
+            if [[ $COMP_CWORD -eq 4 ]]; then
+                local project=${COMP_WORDS[3]}
+                _complete_job "$project"
+            fi
+            if [[ $COMP_CWORD -eq 5 ]]; then
+                local selection=${COMP_WORDS[2]}
+                if [[ $selection == logs ]]; then
+                    local project=${COMP_WORDS[3]}
+                    local job=${COMP_WORDS[4]}
+                    _complete_job_run "$project" "$job"
+                fi
+            fi
+            ;;
+
+        esac
+        return 0
+    fi
+}
+
+complete -F _faculty faculty

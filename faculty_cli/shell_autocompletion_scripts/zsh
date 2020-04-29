@@ -1,0 +1,525 @@
+_faculty() {
+  local state line
+  typeset -A opt_args
+
+  local ret=1
+
+  _arguments -C \
+    '1: :_faculty_cmds' \
+    '*:: :->args' \
+    && ret=0
+
+  case $state in
+    (args)
+      case $line[1] in
+        (environment)
+          _arguments -C \
+            '1:: :_faculty_environment_cmds' \
+            '*:: :->environment-args' && ret=0
+        case $state in
+          (environment-args)
+            case $line[1] in
+              (apply)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '1:: :_faculty_projects' \
+                  '2:: :{_faculty_servers "$line[1]"}' \
+                  '3:: :{_faculty_environments "$line[1]"}' \
+                && ret=0
+              ;;
+              (list)
+              _arguments -C \
+                '(-v --verbose)'{-v,--verbose}'[Print extra information about environments.]' \
+                '--help[Display help message.]' \
+                '1:: :_faculty_projects' \
+              && ret=0
+              ;;
+              (logs)
+              _arguments -C \
+                '--help[Display help message.]' \
+                '(-s --step)'{-s,--step}'[Display only the logs for this step.]' \
+                '1:: :_faculty_projects' \
+                '2:: :{_faculty_servers "$line[1]"}' \
+              && ret=0
+              ;;
+              (status)
+              _arguments -C \
+                '--help[Display help message.]' \
+                '1:: :_faculty_projects' \
+                '2:: :{_faculty_servers "$line[1]"}' \
+              ;;
+            esac
+          ;;
+        esac
+      ;;
+      (file)
+        _arguments -C \
+          '1:: :_faculty_file_cmds' \
+          '*:: :->file-args' && ret=0
+          case $state in
+            (file-args)
+              case $line[1] in
+                (get)
+                  _arguments -C \
+                    '--help[Display help message.]' \
+                    '--server[Name or ID of server to use.]: :{_faculty_servers "$line[1]"}' \
+                    '1: :_faculty_projects' \
+                    '2: :{_remote "$line[1]" "$line[2]"}' \
+                    '3: :_files' \
+                  && ret=0
+                ;;
+                (put)
+                _arguments -C \
+                  '1: :_faculty_projects' \
+                  '2: :_files' \
+                  '3:: :{_remote "$line[1]" "$line[3]"}' \
+                  '--help[Display help message.]' \
+                  '--server[Name or ID of server to use.]: :{_faculty_servers "$line[1]"}' \
+                && ret=0
+                ;;
+                (sync-down)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '--server[Name or ID of server to use.]: :{_faculty_servers "$line[1]"}' \
+                  '1: :_faculty_projects' \
+                  '2: :{_remote "$line[1]" "$line[2]"}' \
+                  '3: :_files' \
+                && ret=0
+                ;;
+                (sync-up)
+                _arguments -C \
+                  '1: :_faculty_projects' \
+                  '2: :_files' \
+                  '3: :{_remote "$line[1]" "$line[3]"}' \
+                  '--help[Display help message.]' \
+                  '--server[Name or ID of server to use.]: :{_faculty_servers "$line[1]"}' \
+                && ret=0
+		        ;;
+                (ls)
+                _arguments -C \
+                  '1: :_faculty_projects' \
+                  '2: :{_remote "$line[1]" "$line[2]"}' \
+                  '--help[Display help message.]' \
+                && ret=0
+		        ;;
+              esac
+            ;;
+          esac
+        ;;
+        (job)
+        _arguments -C \
+          '1:: :_faculty_job_cmds' \
+          '*:: :->job-args' && ret=0
+          case $state in
+            (job-args)
+              case $line[1] in
+                (list)
+                  _arguments -C \
+                    '--help[Display help message.]' \
+                    '(-v --verbose)'{-v,--verbose}'[Print extra information about jobs.]' \
+                    '1: :_faculty_projects' \
+                  && ret=0
+                ;;
+                (list-runs)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '(-v --verbose)'{-v,--verbose}'[Print extra information about runs.]' \
+                  '1: :_faculty_projects' \
+                  '2:: :{_faculty_jobs "$line[1]"}' \
+                && ret=0
+                ;;
+                (logs)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '1: :_faculty_projects' \
+                  '2:: :{_faculty_jobs "$line[1]"}' \
+                  '3: :{_faculty_runs "$line[1]" "$line[2]"}' \
+                && ret=0
+                ;;
+                (run)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '--num-subruns[Number of sub runs.]' \
+                  '1: :_faculty_projects' \
+                  '2:: :{_faculty_jobs "$line[1]"}' \
+                ;;
+              esac
+            ;;
+          esac
+        ;;
+        (login|version)
+          _message 'No more arguments' && ret=0
+        ;;
+        (project)
+        _arguments -C \
+          '1:: :_faculty_project_cmds' \
+          '*:: :->project-args' && ret=0
+          case $state in
+            (project-args)
+              case $line[1] in
+                (list)
+                  _arguments -C \
+                    '--help[Display help message.]' \
+                    '(-v --verbose)'{-v,--verbose}'[Print extra information about projects.]' \
+                  && ret=0
+                ;;
+              esac
+            ;;
+          esac
+        ;;
+        (completion)
+        _arguments -C '1:: :_faculty_completion_cmds' && ret=0 ;;
+        (server)
+          _arguments -C \
+            '1:: :_faculty_server_cmds' \
+            '*:: :->server-args' && ret=0
+          case $state in
+              (server-args)
+                 case $line[1] in
+                   (list)
+                     _arguments -C \
+                       '--help[Display help message.]' \
+                       '(-a --all)'{-a,--all}'[Show all servers]' \
+                       '(-v --verbose)'{-v,--verbose}'[Print extra information about servers.]' \
+                       '1:: :_faculty_projects' \
+                       && ret=0
+                   ;;
+                   (new)
+                      _arguments -C \
+                        '--cores[Number of CPU cores]: :_cores' \
+                        '--memory[Server memory in GB]: :_memory' \
+                        '--type[Server type (default: jupyter)]: :_server_type' \
+                        '--version[Server image version]: :_server_image_version' \
+                        '--name[Name to assign to the server]: :_server_name' \
+                        '--environment[Environments to apply to the server]: :{_faculty_environments "$line[1]"}' \
+                        '--wait[Wait until the server is running before exiting]' \
+                        '--help[Display help message]' \
+			'--machine-type[Machine type for a dedicated instance]: :_node_type' \
+                        '1:: :_faculty_projects' \
+                        && ret=0
+                  ;;
+                  (open)
+                     _arguments -C \
+                       '--server[Name or ID of server to use.]: :{_faculty_servers "$line[1]"}' \
+                       '--help[Display help message.]' \
+                       '1:: :_faculty_projects' \
+                       && ret=0
+                 ;;
+                 (terminate)
+                   _arguments -C \
+                     '--help[Display help message.]' \
+                     '1:: :_faculty_projects' \
+                     '2:: :{_faculty_servers "$line[1]"}' \
+                     && ret=0
+                 ;;
+	        (instance-types)
+                _arguments -C \
+                  '--help[Display help message.]' \
+                  '(-v --verbose)'{-v,--verbose}'[Print extra information about instance types.]' \
+		&& ret=0
+		;;
+              esac
+            ;;
+        esac
+        ;;
+        (shell)
+          _arguments \
+            '--help[Display help message.]' \
+            '1:: :_faculty_projects' \
+            '2:: :{_faculty_servers "$line[1]"}' \
+          && ret=0
+        ;;
+      esac
+      case $line[2] in
+        (list|new|open|terminate)
+           _message 'No more arguments' && ret=0
+      ;;
+      esac
+  ;;
+  esac
+}
+
+
+_faculty_cmds() {
+  local commands; commands=(
+    'completion:Generate auto-completion scripts for faculty_cli.'
+    'environment:Manipulate Faculty server environments.'
+    'file:Manipulate files in a Faculty project.'
+    'job:Manipulate Faculty jobs.'
+    'login:Write Faculty credentials to file.'
+    'project:Manipulate Faculty projects.'
+    'server:Manipulate Faculty servers.'
+    'shell:Open a shell on an Faculty server.'
+    'version:Print the faculty version number.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_faculty_environment_cmds() {
+  local commands; commands=(
+    'apply:Apply an environment to the server.'
+    'list:List your environments.'
+    'logs:Stream the logs for a server environment.'
+    'status:Get the execution status for an environment.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_faculty_file_cmds() {
+  local commands; commands=(
+    'get:Copy a file from the Faculty workspace to the local machine.'
+    'put:Copy a local file to the Faculty workspace.'
+    'sync-down:Sync remote files down from project with rsync.'
+    'sync-up:Sync local files up to a project with rsync.'
+    'ls:List files and directories on the Faculty workspace.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_faculty_project_cmds() {
+  local commands; commands=(
+    'list:List accessible Faculty projects.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_faculty_completion_cmds() {
+  local commands; commands=(
+    'bash'
+    'fish'
+    'zsh'
+  )
+  _describe 'command' commands
+}
+
+_faculty_job_cmds() {
+  local commands; commands=(
+    'list:List the jobs in a project.'
+    'list-runs:List the runs of a job.'
+    'logs:Print the logs for a run.'
+    'run:Run a job.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_faculty_server_cmds() {
+  local commands; commands=(
+    'list:List your Faculty servers.'
+    'new:Create a new Faculty server.'
+    'open:Open a Faculty server in your browser.'
+    'terminate:Terminate a Faculty server.'
+    'instance-types:List the types of servers available on dedicated infrastructure.'
+    '--help:Display help message.'
+  )
+  _describe 'command' commands
+}
+
+_remote() {
+
+  _remote_path_suggestions ${1//\\ /\ } ${2//\\ /\ }
+  IFS=$'\n' SML_REMOTE_PATH_SUGGESTIONS=($(echo $SML_REMOTE_PATH_SUGGESTIONS))
+
+  local files=()
+  local directories=()
+  local files_display=()
+  local directories_display=()
+
+  for item in ${SML_REMOTE_PATH_SUGGESTIONS[@]}; do
+    if [ ${${:-$item}[-1]} = "/" ]; then
+      files+=($item)
+      files_display+=($item:t/)
+    else
+      directories+=($item)
+      directories_display+=($item:t)
+    fi
+  done
+
+  compadd  -d files_display $( IFS=' ' echo "${files[*]}" )
+  compadd  -q -S/ -d directories_display $( IFS=' ' echo "${directories[*]}" )
+
+}
+
+_cores() {
+  _message 'Number of CPU cores (default 1; max 32).'
+}
+
+_memory() {
+  _message 'Server memory in GB (default 4; max 64).'
+}
+
+_server_name() {
+  _message 'Name to assign to the server.'
+}
+
+_server_image_version() {
+  _message 'Server image version.'
+}
+
+_server_type(){
+  local commands; commands=(
+    'jupyter'
+    'jupyterlab'
+    'rstudio'
+  )
+  _describe 'command' commands
+}
+
+_node_type(){
+
+    setopt localoptions sh_word_split
+
+    node_types=$(faculty server instance-types --verbose 2>/dev/null)
+    IFS=$'\n' node_types=($node_types)
+
+    header="$node_types[1]"
+    node_types=("${node_types[@]:1}")
+
+    max_name_length=-1
+    max_cpu_length=-1
+    for node_type in ${node_types[@]}
+    do
+        node_type_name=`echo $node_type | awk '{print $1;}'`
+        if [ ${#node_type_name} -gt $max_name_length ]
+        then
+	    max_name_length=${#node_type_name}
+	fi
+	cpu=`echo $node_type | awk '{print $2;}'`
+        if [ ${#cpu} -gt $max_cpu_length ]
+        then
+	    max_cpu_length=${#node_type_name}
+	fi
+    done
+
+    pad_length=`expr $max_name_length`
+    pad=`printf '%.0s ' {1..$pad_length}`
+    header=`echo $header | sed -e "s/Machine Type[[:space:]]*CPUs/Machine Type${pad}CPUs/g"`
+
+    local commands; commands=()
+    for node_type in ${node_types[@]}
+    do
+        node_type_name=`echo $node_type | awk '{print $1;}'`
+	node_type_info=`echo $node_type | sed -e "s/$node_type_name//g" -e "s/^[ \t]*//"`
+        cpu=`echo $node_type_info | awk '{print $1;}'`
+	pad_length=`expr $max_cpu_length - ${#cpu} + 2`
+	pad=`printf '%.0s ' {1..$pad_length}`
+	commands+=$node_type_name:$pad$node_type_info
+    done
+
+    _message "${header}"
+    _describe -V 'command' commands
+
+}
+
+_faculty_projects() {
+
+  projects=$(faculty project list 2>/dev/null)
+
+  local IFS=$'\n'
+  setopt localoptions sh_word_split
+  projects=($projects)
+  _describe 'Available Faculty projects' projects
+
+}
+
+_faculty_servers() {
+
+  local IFS=$'\n'
+  setopt localoptions sh_word_split
+
+  servers=$(faculty server list ${1//\\ /\ } --verbose --all 2>/dev/null)
+  servers=($servers)
+
+  if [ "$servers" = "No servers." ]
+  then
+        _message "No servers."
+  else
+      header="$servers[1]"
+
+      servers=("${servers[@]:1}")
+
+      server_names=$(faculty server list ${1//\\ /\ } --all 2>/dev/null)
+      server_names=($server_names)
+
+      max_length=-1
+      for server_name in ${server_names[@]}
+      do
+         if [ ${#server_name} -gt $max_length ]
+         then
+            max_length=${#server_name}
+         fi
+      done
+
+      pad_length=`expr $max_length - 6`
+      pad=`printf '%.0s ' {1..$pad_length}`
+      header=`echo $header | sed -e "s/Server Name[[:space:]]*Type/Server Name${pad}Type/g"`
+
+      num_servers=${#server_names[@]}
+
+      local commands; commands=()
+      for i in $(seq 1 $num_servers); do
+
+         server=$servers[i]
+         server_name=$server_names[i]
+         server=`echo $server | sed -e "s/$server_name//g" -e "s/^[ \t]*//"`
+         commands+=$server_name:$server
+      done
+
+      _message "${header}"
+      _describe 'command' commands
+  fi
+}
+
+_faculty_environments() {
+
+  environments=$(faculty environment list ${1//\\ /\ } 2>/dev/null)
+
+  local IFS=$'\n'
+  setopt localoptions sh_word_split
+  environments=($environments)
+  _describe 'Available Faculty environments' environments
+
+}
+
+_faculty_jobs() {
+
+  jobs=$(faculty job list ${1//\\ /\ } 2>/dev/null)
+
+  local IFS=$'\n'
+  setopt localoptions sh_word_split
+  jobs=($jobs)
+  _describe 'Available Faculty jobs' jobs
+
+}
+
+_faculty_runs() {
+
+  runs=$(faculty job list-runs ${1//\\ /\ } ${2//\\ /\ } 2>/dev/null)
+
+  local IFS=$'\n'
+  setopt localoptions sh_word_split
+  runs=($runs)
+  _describe 'Available Faculty runs' runs
+
+}
+
+_remote_path_suggestions() {
+
+  if test -z "$2" -o "$2" = '/project'; then
+    p=/project/
+  else
+    if test ${${:-$2}[-1]} = '/'; then
+      p=$2
+    else
+      p=$2:h/
+    fi
+  fi
+
+  SML_REMOTE_PATH_SUGGESTIONS=$(faculty file ls $1 $p)
+}
+
+compdef _faculty faculty

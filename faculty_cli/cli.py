@@ -51,6 +51,7 @@ import faculty_cli.shell
 import faculty_cli.update
 import faculty_cli.version
 
+
 SSH_OPTIONS = [
     "-o",
     "IdentitiesOnly=yes",
@@ -1292,3 +1293,15 @@ def ls(project, path):
             click.echo("/project{}/".format(item.path))
         else:
             click.echo("/project{}".format(item.path))
+
+
+@cli.command()
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+def completion(shell):
+    """Generate auto-completion scripts for faculty_cli."""
+    module_path = os.path.dirname(__file__)
+    click.echo(
+        open(
+            os.path.join(module_path, "shell_autocompletion_scripts", shell)
+        ).read()
+    )

@@ -1,1 +1,2 @@
 include LICENSE-2.0.txt
+recursive-include faculty_cli/shell_autocompletion_scripts *
