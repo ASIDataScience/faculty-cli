@@ -58,7 +58,7 @@ setup(
         "requests",
         "six",
         "tabulate",
-        "faculty>=0.26.0",
+        "faculty==0.26.4.dev5",
     ],
     entry_points={"console_scripts": ["faculty=faculty_cli.cli:cli"]},
 )

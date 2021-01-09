@@ -34,7 +34,9 @@ import faculty
 import faculty.config
 import requests
 import faculty.clients.base
+from faculty.context import get_context
 import faculty.datasets
+from faculty.clients.notification import TemplatePublishingError
 from faculty.clients.server import (
     DedicatedServerResources,
     ServerStatus,
@@ -50,7 +52,7 @@ import faculty_cli.parse
 import faculty_cli.shell
 import faculty_cli.update
 import faculty_cli.version
-
+import faculty_cli.templates
 
 SSH_OPTIONS = [
     "-o",
@@ -400,6 +402,15 @@ def _format_datetime(timestamp):
         return "-"
     else:
         return timestamp.strftime("%Y-%m-%d %H:%M")
+
+
+def _path_in_project(path_in_server):
+    if path_in_server == "/project":
+        return "/"
+    elif path_in_server.startswith("/project/"):
+        return path_in_server[len("/project") :]
+    else:
+        return path_in_server
 
 
 class FacultyCLIGroup(click.Group):
@@ -1449,3 +1460,196 @@ def dataset_ls(project, prefix, show_hidden):
         prefix, project_id=project_id, show_hidden=show_hidden
     ):
         click.echo(item)
+
+
+@cli.group()
+def template():
+    """Manipulate templates in the Faculty knowledge centre."""
+    pass
+
+
+@template.command()
+def init():
+    """Create a blank template."""
+    faculty_cli.templates.create_blank_template()
+
+
+@template.command()
+@click.argument("template")
+@click.option(
+    "--version",
+    default=None,
+    help="The specific version of the template to use.",
+)
+@click.option(
+    "--target-directory",
+    default=os.getcwd(),
+    help="The optional target directory where the template will be placed.",
+    type=click.Path(),
+)
+def clone(template, version, directory):
+    """Clone an existing template."""
+    # TODO: template might be passed as UUID or name and we need to resolve it.
+    # See _resolve_project above.
+    print(template)
+    print(directory)
+
+    if version is None:
+        # TODO: Get the latest version
+        print(version)
+
+
+@template.command()
+@click.argument("target_project_identifier")
+@click.argument(
+    "source_directory", default=os.getcwd(), type=click.Path(), required=False
+)
+@click.option(
+    "-t",
+    "--target-directory",
+    default="/",
+    help="The optional target directory.",
+)
+@click.option(
+    "parameters",
+    "--parameter",
+    "-p",
+    type=(str, str),
+    default=[],
+    help="Template parameters as key value pairs",
+    multiple=True,
+)
+def add_to_project_from_directory(
+    target_project_identifier, source_directory, target_directory, parameters
+):
+    """Apply from a directory to a project."""
+    template_client = faculty.client("template")
+    notification_client = faculty.client("notification")
+
+    user_id = _get_authenticated_user_id()
+    target_project_id = _resolve_project(target_project_identifier)
+    source_project_id = get_context().project_id
+    if not source_project_id:
+        _print_and_exit(
+            "This command is meant to be used from inside a Faculty server.",
+            64,
+        )
+
+    abs_src_dir = os.path.abspath(source_directory)
+    if not (abs_src_dir == "/project" or abs_src_dir.startswith("/project/")):
+        _print_and_exit(
+            "Source directory must be under /project. "
+            "This command is meant to be used from inside a Faculty server.",
+            64,
+        )
+    src_dir_in_project = _path_in_project(abs_src_dir)
+
+    notifications = notification_client.add_to_project_from_dir_notifications(
+        user_id, target_project_id
+    )
+    # Start collecting events before publishing so we don't lose our event
+    try:
+        template_client.add_to_project_from_directory(
+            source_project_id,
+            src_dir_in_project,
+            target_project_id,
+            target_directory,
+            dict(parameters),
+        )
+    except faculty.clients.template.TemplateException as e:
+        _print_and_exit(faculty_cli.templates.publishing_error_message(e), 64)
+
+    try:
+        notifications.wait_for_completion()
+        click.echo(
+            "Successfully applied template to project {}.".format(
+                target_project_identifier
+            )
+        )
+    except TemplatePublishingError as err:
+        _print_and_exit(err, 64)
+
+
+@template.command()
+@click.argument("project_name")
+@click.argument(
+    "source_directory", default=os.getcwd(), type=click.Path(), required=False
+)
+@click.option(
+    "--target-directory", default="/", help="The optional target directory."
+)
+@click.option(
+    "parameters",
+    "--parameter",
+    "-p",
+    type=(str, str),
+    default=[],
+    help="Template parameters as key value pairs",
+    multiple=True,
+)
+def create_project_from_directory(
+    project_name, source_directory, target_directory, parameters
+):
+    """Apply from a directory to a new project."""
+    print(project_name)
+    print(source_directory)
+    print(target_directory)
+
+    for key, value in parameters:
+        print(key, value)
+
+
+@template.group()
+def publish():
+    """Publish to the knowledge centre."""
+    pass
+
+
+@publish.command(name="new")
+@click.argument("template")
+@click.argument("source_directory", default=os.getcwd(), required=False)
+def publish_new_template(template, source_directory):
+    """Publish a new template from a directory to the knowledge centre."""
+    template_client = faculty.client("template")
+    notification_client = faculty.client("notification")
+
+    user_id = _get_authenticated_user_id()
+    project_id = get_context().project_id
+
+    if not project_id:
+        _print_and_exit(
+            "This command is meant to be used from inside a Faculty server.",
+            64,
+        )
+
+    abs_src_dir = os.path.abspath(source_directory)
+    if not (abs_src_dir == "/project" or abs_src_dir.startswith("/project/")):
+        _print_and_exit(
+            "Source directory must be under /project. "
+            "This command is meant to be used from inside a Faculty server.",
+            64,
+        )
+    src_dir_in_project = _path_in_project(abs_src_dir)
+
+    notifications = notification_client.publish_template_notifications(
+        user_id, project_id
+    )
+    # Start collecting events before publishing so we don't lose our event
+    try:
+        template_client.publish_new(project_id, template, src_dir_in_project)
+    except faculty.clients.template.TemplateException as e:
+        _print_and_exit(faculty_cli.templates.publishing_error_message(e), 64)
+    try:
+        notifications.wait_for_completion()
+        click.echo("Successfully published template `{}`.".format(template))
+    except TemplatePublishingError as err:
+        _print_and_exit(err, 64)
+
+
+@publish.command(name="version")
+@click.argument("template")
+@click.argument("source_directory", default=os.getcwd(), required=False)
+def publish_new_version(template, source_directory):
+    """Publish a new version from a directory to an existing template."""
+    print(template)
+    print(source_directory)
