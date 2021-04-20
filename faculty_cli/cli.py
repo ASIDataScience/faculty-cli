@@ -40,6 +40,8 @@ from faculty.clients.server import (
     ServerStatus,
     SharedServerResources,
 )
+from faculty.clients.serveragent import ServerAgentClient
+from faculty.session import get_session
 from tabulate import tabulate
 
 import faculty_cli.auth
@@ -896,8 +898,9 @@ def status(project, server):
     server = server_client.get(project_id, server_id)
 
     hound_url = _get_hound_url(server)
+    session = get_session()
 
-    client = faculty_cli.hound.Hound(hound_url)
+    client = ServerAgentClient(hound_url, session)
     execution = client.latest_environment_execution()
 
     if execution is None:
@@ -934,8 +937,9 @@ def logs(project, server, step_number):
     server = server_client.get(project_id, server_id)
 
     hound_url = _get_hound_url(server)
+    session = get_session()
 
-    client = faculty_cli.hound.Hound(hound_url)
+    client = ServerAgentClient(hound_url, session)
     execution = client.latest_environment_execution()
 
     if execution is None:
@@ -955,7 +959,7 @@ def logs(project, server, step_number):
             _print_and_exit("step {} out of range".format(step_number), 64)
 
     for step in steps:
-        for line in client.stream_environment_execution_step_logs(step):
+        for line in client.stream_environment_execution_step_logs(execution.execution_id, step.step_id):
             click.echo(line)
 
 
