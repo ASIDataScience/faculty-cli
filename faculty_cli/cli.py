@@ -959,7 +959,7 @@ def logs(project, server, step_number):
             _print_and_exit("step {} out of range".format(step_number), 64)
 
     for step in steps:
-        for line in client.stream_environment_execution_step_logs(execution.execution_id, step.step_id):
+        for line in client.stream_environment_execution_step_logs(execution.id, step.id):
             click.echo(line)
 
 
