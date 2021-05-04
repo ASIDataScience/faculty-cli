@@ -47,7 +47,6 @@ from tabulate import tabulate
 import faculty_cli.auth
 import faculty_cli.config
 import faculty_cli.client
-import faculty_cli.hound
 import faculty_cli.parse
 import faculty_cli.shell
 import faculty_cli.update
@@ -908,14 +907,14 @@ def status(project, server):
         _print_and_exit(msg, 64)
 
     click.echo("Latest environment execution:")
-    click.echo("  Status: {}".format(execution.status))
+    click.echo("  Status: {}".format(execution.status.value))
     for i, environment in enumerate(execution.environments):
         click.echo("")
         click.echo("Environment {}".format(i))
         for j, step in enumerate(environment.steps):
             click.echo("")
             click.echo("Step {}:".format(j))
-            click.echo("  Status:  {}".format(step.status))
+            click.echo("  Status:  {}".format(step.status.value))
             click.echo("  Command: {}".format(_format_command(step.command)))
 
 
@@ -960,7 +959,7 @@ def logs(project, server, step_number):
 
     for step in steps:
         for line in client.stream_environment_execution_step_logs(execution.id, step.id):
-            click.echo(line)
+            click.echo(line.content)
 
 
 @cli.group()
